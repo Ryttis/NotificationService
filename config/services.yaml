@@ -1,0 +1,113 @@
+parameters:
+    push_sender.server_key: '%env(PUSH_SENDER_SERVER_KEY)%'
+    firebase_service_account_path: '%kernel.project_dir%/config/firebase_service_account.json'
+    facebook_page_access_token: '%env(FACEBOOK_PAGE_ACCESS_TOKEN)%'
+    env(MESSENGER_MAX_RETRIES): '3'
+    env(MESSENGER_DELAY): '1000'
+    env(MESSENGER_MULTIPLIER): '2.0'
+
+services:
+    _defaults:
+        autowire: true
+        autoconfigure: true
+
+    GuzzleHttp\Client: ~
+
+    App\:
+        resource: '../src/'
+        exclude:
+            - '../src/DependencyInjection/'
+            - '../src/Entity/'
+            - '../src/Kernel.php'
+            - '../src/Tests/'
+
+    App\Infrastructure\Repository\SqlNotificationRepository:
+        arguments:
+            $entityManager: '@doctrine.orm.entity_manager'
+
+    mailer.mailer:
+        class: Symfony\Component\Mailer\Mailer
+
+    App\Controller\:
+        resource: '../src/Controller/'
+        tags: [ 'controller.service_arguments' ]
+        public: true
+        autowire: true
+        autoconfigure: true
+        arguments:
+            $notificationService: '@App\Application\Service\NotificationService'
+
+    App\Application\Service\NotificationService:
+        autowire: true
+        arguments:
+            $locator: '@message_sender.locator'
+
+    message_sender.locator:
+        class: Symfony\Component\DependencyInjection\ServiceLocator
+        arguments:
+            -
+                email_aws: '@App\Infrastructure\Messaging\Email\AwsSesEmailSender'
+                email_smtp: '@App\Infrastructure\Messaging\Email\SmtpProvider'
+                sms: '@App\Infrastructure\Messaging\Sms\SmsSender'
+                facebook: '@App\Infrastructure\Messaging\Facebook\FacebookMessengerSender'
+                push: '@App\Infrastructure\Messaging\Push\PushSender'
+
+    Symfony\Component\DependencyInjection\ServiceLocator:
+        alias: message_sender.locator
+
+    Aws\Ses\SesClient:
+        class: Aws\Ses\SesClient
+        arguments:
+            - version: 'latest'
+              region: '%env(AWS_REGION)%'
+              credentials:
+                  key: '%env(AWS_ACCESS_KEY_ID)%'
+                  secret: '%env(AWS_SECRET_ACCESS_KEY)%'
+
+    App\Infrastructure\Messaging\Email\AwsSesEmailSender:
+        arguments:
+            $client: '@Aws\Ses\SesClient'
+            $senderEmail: '%env(SENDER_EMAIL)%'
+        autowire: true
+        autoconfigure: true
+        tags: [ 'app.email_provider' ]
+
+    Twilio\Rest\Client:
+        class: Twilio\Rest\Client
+        arguments:
+            $username: '%env(TWILIO_ACCOUNT_SID)%'
+            $password: '%env(TWILIO_AUTH_TOKEN)%'
+
+    App\Infrastructure\Messaging\Sms\SmsSender:
+        arguments:
+            $client: '@Twilio\Rest\Client'
+            $fromNumber: '%env(TWILIO_PHONE_NUMBER)%'
+            $maxRetries: '%env(int:MESSENGER_MAX_RETRIES)%'
+            $delay: '%env(int:MESSENGER_DELAY)%'
+        autowire: true
+        autoconfigure: true
+
+    App\Infrastructure\Messaging\Facebook\FacebookMessengerSender:
+        arguments:
+            $client: '@GuzzleHttp\Client'
+            $pageAccessToken: '%facebook_page_access_token%'
+        autowire: true
+        autoconfigure: true
+
+    App\Infrastructure\Messaging\Push\PushSender:
+        arguments:
+            $firebaseConfigPath: '%firebase_service_account_path%'
+
+    App\Infrastructure\Messaging\Email\SmtpProvider:
+        arguments:
+            $mailer: '@mailer.mailer'
+            $bus: '@messenger.default_bus'
+            $fromEmail: '%env(MAILER_FROM_EMAIL)%'
+            $maxRetries: '%env(int:MAILER_MAX_RETRIES)%'
+            $delay: '%env(int:MAILER_DELAY)%'
+            $logger: '@logger'
+
+        tags: [ 'app.email_provider' ]
+
+
+
