@@ -7,9 +7,8 @@ services:
       context: ./
       dockerfile: ./docker/php/Dockerfile
     volumes:
-      - .:/app:cached
+      - .:/var/www/html:cached
       - ./docker/php/conf.d/custom.ini:/etc/php/conf.d/php.ini
-    working_dir: /app
     container_name: php8
     networks:
       - notify

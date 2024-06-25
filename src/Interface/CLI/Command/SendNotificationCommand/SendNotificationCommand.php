@@ -26,21 +26,19 @@ class SendNotificationCommand extends Command
             ->setName('app:send-notification')
             ->setDescription('Sends a notification to a specified recipient.')
             ->addArgument('recipient', InputArgument::REQUIRED, 'The recipient of the notification.')
-            ->addArgument('message', InputArgument::REQUIRED, 'The message content of the notification.')
-            ->addArgument('senderType', InputArgument::REQUIRED, 'The message sender type.');
+            ->addArgument('message', InputArgument::REQUIRED, 'The message content of the notification.');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int
     {
         $recipient = $input->getArgument('recipient');
         $messageContent = $input->getargument('message');
-        $senderType = $input->getargument('senderType');
 
         $message = new Message($recipient, $messageContent);
         $notification = new Notification($message);
 
         try {
-            $this->notificationService->sendNotification($notification, $senderType);
+            $this->notificationService->sendNotification($notification);
             $output->writeln('Notification sent successfully to: '.$recipient);
 
             return Command::SUCCESS;

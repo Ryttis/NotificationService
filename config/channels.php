@@ -2,16 +2,16 @@
 
 return [
     'channels' => [
-        'email' => [
+        'email_smtp' => [
+            'enabled' => true,
+            'class' => App\Infrastructure\Messaging\Email\SmtpProvider::class,
+        ],
+        'email_aws' => [
             'enabled' => false,
-            'class' => [
-                App\Infrastructure\Messaging\Email\SendgridProvider::class,
-                App\Infrastructure\Messaging\Email\SmtpProvider::class,
-                App\Infrastructure\Messaging\Email\AwsSesEmailSender::class,
-            ],
+            'class' => App\Infrastructure\Messaging\Email\AwsSesEmailSender::class,
         ],
         'sms' => [
-            'enabled' => true,
+            'enabled' => false,
             'class' => App\Infrastructure\Messaging\Sms\SmsSender::class,
         ],
         'facebook' => [
